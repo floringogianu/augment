@@ -20,6 +20,9 @@ transformations = [
     T.Blur(radius=3)  # Blurs the ColorCast img
 ]
 
+src = "data/src/"
+dest = "data/dest/"
+
 Manager(src=src,
         dest=dest,
         transformations=transformations,
