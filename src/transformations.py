@@ -45,7 +45,7 @@ class Scale(Transformation):
     def _get_new_dims(self, img):
         w, h = img.size
         if h > w:
-            return (int(self.size * h / w), self.size)
+            return (int(self.size * w / h), self.size)
         elif w > h:
             return (self.size, int(self.size * h / w))
         else:
