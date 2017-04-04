@@ -1,6 +1,6 @@
 import time
-from src.core import Manager
-import src.transformations as T
+from augment import Manager
+from augment import transformations as T
 
 
 if __name__ == "__main__":

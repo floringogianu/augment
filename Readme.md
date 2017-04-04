@@ -12,8 +12,8 @@ The script will load all the images in `src/**/*.jpg` and will save the
 augmented images respecting the source directory hierarchy.
 
 ```python
-from src.core import Manager
-import src.transformations as T
+from augment import Manager
+import augment.transformations as T
 
 transformations = [
     T.Scale(size=512, mutable=True),  # scales to 512px smalles side
@@ -35,7 +35,7 @@ Manager(src=src,
 
 ## ToDo
 
-- Make it a `pip` plugin
+- ~~Make it a `pip` plugin~~
 - Proper handling of file extensions
 - Better Exception Handling
 - Add support for non-saving transformations
