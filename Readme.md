@@ -8,6 +8,9 @@ Part of the interface is inspired by
 
 ## Usage
 
+The script will load all the images in `src/**/*.jpg` and will save the
+augmented images respecting the source directory hierarchy.
+
 ```python
 from src.core import Manager
 import src.transformations as T
