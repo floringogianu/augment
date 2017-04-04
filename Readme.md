@@ -33,6 +33,16 @@ Manager(src=src,
         ).process()
 ```
 
+## Installation:
+
+```
+git clone https://github.com/floringogianu/augment
+cd augment
+
+pip install -r requirements.txt
+pip install -e .
+```
+
 ## ToDo
 
 - ~~Make it a `pip` plugin~~
