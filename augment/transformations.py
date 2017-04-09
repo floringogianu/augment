@@ -3,7 +3,7 @@
     Mainly wrappers around PIL classes.
 """
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageTransform
 
 
 class Transformation(object):
@@ -50,6 +50,131 @@ class Scale(Transformation):
             return (self.size, int(self.size * h / w))
         else:
             return (self.size, self.size)
+
+
+class RadialDistortion(object):
+    def __init__(self):
+        pass
+
+    def _normalize(self, coord, dim):
+        return (2 * coord - dim) / dim
+
+    def _denormalize(self, coord, dim):
+        return int(((coord + 1) * dim) / 2)
+
+    def _get_l2(self, x, y):
+        return x * x + y * y
+
+
+class PincushionDistortion(RadialDistortion):
+    def __init__(self, k):
+        RadialDistortion.__init__(self)
+        if k < 0:
+            raise ValueError("Distortion coefficient can't be negative for \
+                pincushion effects. Try T.BarrelDistortion.")
+        self.k = k
+        self.info = "_pincushion_dst_%dpx" % k
+
+    def distort_grid(self, src_grid, w, h):
+        dst_grid = src_grid.copy().astype(np.float)
+        dst_grid[:, :, 0] = np.divide(np.multiply(dst_grid[:, :, 0], 2) - w, w)
+        dst_grid[:, :, 1] = np.divide(np.multiply(dst_grid[:, :, 1], 2) - h, h)
+
+        r = np.add(np.power(dst_grid[:, :, 0], 2),
+                   np.power(dst_grid[:, :, 1], 2))
+
+        dst_grid[:, :, 0] = dst_grid[:, :, 0] * (1 - self.k * r)
+        dst_grid[:, :, 1] = dst_grid[:, :, 1] * (1 - self.k * r)
+
+        dst_grid[:, :, 0] = ((dst_grid[:, :, 0] + 1) * w) / 2
+        dst_grid[:, :, 1] = ((dst_grid[:, :, 1] + 1) * h) / 2
+
+        return dst_grid.astype(np.int16)
+
+    def _distort(self, x, y, w, h):
+        x_n, y_n = self._normalize(x, w), self._normalize(y, h)
+        r = self._get_l2(x_n, y_n)
+        x_d = x_n * (1 - self.k * r)
+        y_d = y_n * (1 - self.k * r)
+        return (self._denormalize(x_d, w), self._denormalize(y_d, h))
+
+
+class BarrelDistortion(PincushionDistortion):
+    def __init__(self, k):
+        PincushionDistortion.__init__(self, k)
+        if k < 0:
+            raise ValueError("Distortion coefficient can't be negative for \
+                pincushion effects. Try T.BarrelDistortion.")
+        self.k = -k
+        self.info = "_barrel_dst_%dpx" % k
+
+
+class RandomDistortion(object):
+    def __init__(self, kx, ky):
+        RadialDistortion.__init__(self)
+        self.kx = kx
+        self.ky = ky
+
+
+class Distort(Transformation):
+    def __init__(self, kind=BarrelDistortion(k=0.125), grid_div=(4, 4),
+                 mutable=False):
+        Transformation.__init__(self)
+
+        self.grid_div = grid_div
+        self.kind = kind
+        self.mutable = mutable
+        self.info = self.kind.info
+
+    def transform(self, img):
+        src_grid = self._compute_grid(*img.size, *self.grid_div)
+        dst_grid = self.kind.distort_grid(src_grid, *img.size)
+        mesh = self._grid_to_mesh(dst_grid, src_grid)
+        return img.transform(img.size, ImageTransform.MeshTransform(mesh))
+
+    def _compute_grid(self, w, h, w_div, h_div):
+        """ Compute grid coordinates and generate the meshgrid. """
+        x_grid = np.arange(0, w + 1, w / w_div)
+        y_grid = np.arange(0, h + 1, h / h_div)
+        mesh_grid = np.meshgrid(x_grid, y_grid)
+        return np.asarray(mesh_grid,
+                          dtype=np.int16).swapaxes(0, 2).swapaxes(0, 1)
+
+    def _grid_to_mesh(self, dst_grid, src_grid):
+        assert(src_grid.shape == dst_grid.shape)
+        mesh = []
+        for i in range(dst_grid.shape[0] - 1):
+            for j in range(dst_grid.shape[1] - 1):
+
+                dst_quad = self._map_to_quad(dst_grid, i, j)
+                src_quad = self._map_to_quad(src_grid, i, j)
+
+                src_rect = self._quad_to_rect(src_quad)
+                mesh.append([src_rect, dst_quad])
+        return mesh
+
+    def _map_to_quad(self, grid, i, j):
+        return [grid[i, j, 0], grid[i, j, 1],
+                grid[i + 1, j, 0], grid[i + 1, j, 1],
+                grid[i + 1, j + 1, 0], grid[i + 1, j + 1, 1],
+                grid[i, j + 1, 0], grid[i, j + 1, 1]]
+
+    def _quad_as_rect(self, quad):
+        if quad[0] != quad[2]:
+            return False
+        elif quad[1] != quad[7]:
+            return False
+        elif quad[4] != quad[6]:
+            return False
+        elif quad[3] != quad[5]:
+            return False
+        else:
+            return True
+
+    def _quad_to_rect(self, quad):
+        assert(len(quad) == 8)
+        assert(self._quad_as_rect(quad))
+        return (quad[0], quad[1], quad[4], quad[3])
 
 
 class Blur(Transformation):
