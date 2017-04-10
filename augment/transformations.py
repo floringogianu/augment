@@ -97,13 +97,6 @@ class PincushionDistortion(RadialDistortion):
 
         return dst_grid.astype(np.int16)
 
-    def _distort(self, x, y, w, h):
-        x_n, y_n = self._normalize(x, w), self._normalize(y, h)
-        r = self._get_l2(x_n, y_n)
-        x_d = x_n * (1 - self.k * r)
-        y_d = y_n * (1 - self.k * r)
-        return (self._denormalize(x_d, w), self._denormalize(y_d, h))
-
 
 class BarrelDistortion(PincushionDistortion):
     def __init__(self, k):
