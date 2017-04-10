@@ -4,6 +4,7 @@
 """
 import numpy as np
 from PIL import Image, ImageFilter, ImageTransform
+from termcolor import colored as clr
 
 
 class Transformation(object):
@@ -56,38 +57,43 @@ class RadialDistortion(object):
     def __init__(self):
         pass
 
-    def _normalize(self, coord, dim):
-        return (2 * coord - dim) / dim
+    def _normalize(self, dst_grid, w, h):
+        dst_grid[:, :, 0] = np.divide(np.multiply(dst_grid[:, :, 0], 2) - w, w)
+        dst_grid[:, :, 1] = np.divide(np.multiply(dst_grid[:, :, 1], 2) - h, h)
+        return dst_grid
 
-    def _denormalize(self, coord, dim):
-        return int(((coord + 1) * dim) / 2)
+    def _denormalize(self, dst_grid, w, h):
+        dst_grid[:, :, 0] = ((dst_grid[:, :, 0] + 1) * w) / 2
+        dst_grid[:, :, 1] = ((dst_grid[:, :, 1] + 1) * h) / 2
+        return dst_grid
 
-    def _get_l2(self, x, y):
-        return x * x + y * y
+    def _get_l2(self, dst_grid):
+        return np.add(np.power(dst_grid[:, :, 0], 2),
+                      np.power(dst_grid[:, :, 1], 2))
 
 
 class PincushionDistortion(RadialDistortion):
     def __init__(self, k):
         RadialDistortion.__init__(self)
         if k < 0:
-            raise ValueError("Distortion coefficient can't be negative for \
-                pincushion effects. Try T.BarrelDistortion.")
+            raise ValueError(clr(
+                "Distortion coefficient can't be negative for" +
+                " pincushion effects. Try T.BarrelDistortion.",
+                "white", "on_red"))
         self.k = k
-        self.info = "_pincushion_dst_%dpx" % k
+        self.info = "_pincushion_dst"
 
     def distort_grid(self, src_grid, w, h):
         dst_grid = src_grid.copy().astype(np.float)
-        dst_grid[:, :, 0] = np.divide(np.multiply(dst_grid[:, :, 0], 2) - w, w)
-        dst_grid[:, :, 1] = np.divide(np.multiply(dst_grid[:, :, 1], 2) - h, h)
+        dst_grid = self._normalize(dst_grid, w, h)
 
-        r = np.add(np.power(dst_grid[:, :, 0], 2),
-                   np.power(dst_grid[:, :, 1], 2))
+        r = self._get_l2(dst_grid)
 
+        # Apply the radial distortion model.
         dst_grid[:, :, 0] = dst_grid[:, :, 0] * (1 - self.k * r)
         dst_grid[:, :, 1] = dst_grid[:, :, 1] * (1 - self.k * r)
 
-        dst_grid[:, :, 0] = ((dst_grid[:, :, 0] + 1) * w) / 2
-        dst_grid[:, :, 1] = ((dst_grid[:, :, 1] + 1) * h) / 2
+        dst_grid = self._denormalize(dst_grid, w, h)
 
         return dst_grid.astype(np.int16)
 
@@ -102,11 +108,14 @@ class PincushionDistortion(RadialDistortion):
 class BarrelDistortion(PincushionDistortion):
     def __init__(self, k):
         PincushionDistortion.__init__(self, k)
+        print("Warning, BarrelDistortion requires cropping, " +
+              "will be implemented soon.")
         if k < 0:
-            raise ValueError("Distortion coefficient can't be negative for \
-                pincushion effects. Try T.BarrelDistortion.")
+            raise ValueError(clr(
+                "Distortion coefficient shoule be positive.",
+                "white", "on_red"))
         self.k = -k
-        self.info = "_barrel_dst_%dpx" % k
+        self.info = "_barrel_dst"
 
 
 class RandomDistortion(object):
