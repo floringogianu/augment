@@ -20,7 +20,9 @@ transformations = [
     T.CycledColorCast(angle=90),  # walks the hue wheel in 90 degr. steps
     T.Blur(radius=2),  # Blur the Original&Scaled image, not the color cast
     T.ColorCast(angle=45, mutable=True),  # mutates the Original&Scaled img
-    T.Blur(radius=3)  # Blurs the ColorCast img
+    T.Blur(radius=3),  # Blurs the ColorCast img
+    T.Distort(kind=T.BarrelDistortion(k=0.125)),
+    T.Distort(kind=T.PincushionDistortion(k=0.125))
 ]
 
 src = "data/src/"
