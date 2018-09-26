@@ -1,6 +1,6 @@
 # Augment
 
-A simple script for image augmentation using `multiprocessing` and
+A simple script for offline image augmentation using `multiprocessing` and
 [PILlow](https://pillow.readthedocs.io).
 
 Part of the interface is inspired by
